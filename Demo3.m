@@ -3,8 +3,15 @@
 % ------------------------------------------------------------------------%
 addpath(genpath('../trunk'));
 
-input_bkgs = loadImages('Dataset/Demo2/bkg','jpg',0);
-input_seq = loadImages('Dataset/Demo2/seq','jpg',1);
+input_bkgs = loadImages('Dataset/Demo3/bkg','jpg',0);
+for i = 1:length(input_bkgs)
+    input_bkgs{i} = flip(permute(input_bkgs{i},[2 1 3]),2);
+end
+
+input_seq = loadImages('Dataset/Demo3/seq','jpg',0);
+for i = 1:length(input_seq)
+    input_seq{i} = flip(permute(input_seq{i},[2 1 3]),2);
+end
 
 
 %% ----------------------------------------------------------------------%%
@@ -12,24 +19,25 @@ input_seq = loadImages('Dataset/Demo2/seq','jpg',1);
 % ------------------------------------------------------------------------%
 %% HSV background subtraction
 % Silhouettes extraction exploiting the HSV color space. The filter size is
-% optional, 3 as default. For this demo, a 5x5 window provides better
-% results.
-silhHSVSub = hsvSubtraction(input_bkgs,input_seq,5);
-figure, showMontage(silhHSVSub);
+% optional, 3 as default. For this demo, a 19x19 window provides better
+% results
+silhHSVSub = hsvSubtraction(input_bkgs,input_seq,19);
+for i = 1:length(silhHSVSub)
+    silhHSVSub{i}(round(size(silhHSVSub{i},1)*2/3):end,:) = 0;
+end
+showMontage(silhHSVSub);
 title('HSV silhouette extraction')
 
 %% Efficient background subtraction 
 % Silhouettes extraction using the subtraction technique described in
 % "Efficient Background Subtraction and Shadow Removal for Monochromatic 
-% Video Sequences. IEEE Transactions on Multimedia". A median filter is
-% applied to denoise the resulting silhouettes.
+% Video Sequences. IEEE Transactions on Multimedia".
 [w,~,k,st] = backgroundTM(input_bkgs);
 silhEBSSR = foregroundTM(input_seq,w,st,k);
-
 for i = 1:length(silhEBSSR)
-    silhEBSSR{i} = medfilt2(silhEBSSR{i},[13,13]);
+    silhEBSSR{i}(round(size(silhEBSSR{i},1)*2/3):end,:) = 0;
 end
-figure, showMontage(silhEBSSR);
+showMontage(silhEBSSR);
 title('EBBSR silhouette extraction')
 
 %% Adaptive background mixture model (gaussian background subtraction)
@@ -39,47 +47,47 @@ title('EBBSR silhouette extraction')
 % Shadow Detection", both implemented in Matlab in the vision toolbox.
 silhGMM = gaussianMixtureModelSubtraction(input_bkgs,input_seq,...
     struct('param','eta','value',0.0000001),...
-    struct('param','numGaussians','value',15),...
-    struct('param','bkgRatio','value',0.7),...
+    struct('param','numGaussians','value',3),...
+    struct('param','bkgRatio','value',1),...
     struct('param','var','value','Auto'));
 
 for i = 1:length(silhGMM)
-    silhGMM{i} = medfilt2(silhGMM{i},[9,9]);
+    silhGMM{i} = medfilt2(silhGMM{i},[17,17]);
+    silhGMM{i}(round(size(silhGMM{i},1)*2/3):end,:) = 0;
+    silhGMM{i} = imdilate(imerode(silhGMM{i},strel('disk',1,0)),strel('disk',7,6));
+    silhGMM{i} = medfilt2(silhGMM{i},[40,40]);
+    silhGMM{i} = imdilate(silhGMM{i},strel('disk',2,6));
 end
-figure, showMontage(silhGMM);
+showMontage(silhGMM);
 title('Adaptive background mixture model (gaussian background modeling)')
 
 %% Statistical background modeling and classification
 % Silhouettes extraction using the subtraction technique described in 
 % "A statistical approach for real-time robust background subtraction and 
-% shadow detection".
+% shadow detection"
 [mean_, stddev_, brightness_,bdist_variation,cdist_variation,...
-    thresh_cdist,thresh_bdist_left,thresh_bdist_right] = statisticalBackgroundModeling(input_bkgs(1:10),0.99);
+    thresh_cdist,thresh_bdist_left,thresh_bdist_right] = statisticalBackgroundModeling(input_bkgs(1:5),0.99);
 [silhStatist,~,~] = statisticalClassification(input_seq,bdist_variation,cdist_variation,thresh_cdist,thresh_bdist_left,thresh_bdist_right,mean_,stddev_,brightness_);
-
 for i = 1:length(silhStatist)
-    silhStatist{i} = medfilt2(silhStatist{i},[15,15]);
+    silhStatist{i}(round(size(silhStatist{i},1)*2/3):end,:) = 0;
 end
 showMontage(silhStatist);
 title('Statistical background modeling and classification')
 
 %% RGB thresholding with Genetic Algorithm
-% Compute the single channel thresholds using a genetic algorithm, using as
-% ground truth one silhouette extracted with the adaptive mixture model.
-[rT,gT,bT] = geneticGraySelection(input_bkgs,input_seq{1},...
-    silhGMM{1},20,50);
+% Compute the single channel thresholds using genetic algorithm
+[rT,gT,bT] = geneticGraySelection(input_bkgs,input_seq{1},silhGMM{1},20,100);
 
 % Silhouettes extraction exploiting separate thresholds for each channel of
-% the RGB color space. The thresholds are optional, 4 as default each. 
+% the RGB color space. The thresholds are optional, 4 as default each.
 silhStdSub = grayscaleSubtraction(input_bkgs,input_seq,...
     struct('ch','r','value',rT),...
     struct('ch','g','value',gT),...
     struct('ch','b','value',bT));
-
 for i = 1:length(silhStdSub)
-    silhStdSub{i} = medfilt2(silhStdSub{i},[7,7]);
+    silhStdSub{i}(round(size(silhStdSub{i},1)*2/3):end,:) = 0;
 end
-showMontage(silhStdSub);
+showMontage(silhStdSub)
 title('RGB thresholding with Genetic algorithm')
 
 
@@ -89,7 +97,7 @@ title('RGB thresholding with Genetic algorithm')
 %% Silhouettes preparation
 % Save the images representing the silhouettes in a directory, for later
 % usage.
-silhPath = strcat(pwd,'/Dataset/Demo2/silhs');
+silhPath = strcat(pwd,'/Dataset/Demo3/silhs');
 if ~exist(silhPath,'dir')
     mkdir(silhPath);
     addpath(silhPath); % if it exist it has been already inserted in the Matlab datapath
@@ -107,8 +115,8 @@ end
 foreGMM = detachForeground(input_seq,silhGMM);
 
 % Save the images representing the foreground in a directory, for later
-% usage.
-fgPath = strcat(pwd,'/Dataset/Demo2/fg');
+% usage
+fgPath = strcat(pwd,'/Dataset/Demo3/fg');
 if ~exist(fgPath,'dir')
     mkdir(fgPath);
     addpath(fgPath); % if it exist it has been already inserted in the Matlab datapath
@@ -138,29 +146,39 @@ clear silhPath fgPath
 % procedure. If an image in the sequence has not a sufficient number of
 % matching features with the previous one (the sequence is ORDERED), then 
 % the corresponding camera position cannot be computed.
-[~,mask] = selectionByFeatures(cleanFg,165);
+[maskedCleanFg,mask] = selectionByFeatures(cleanFg,150);
 joinedImgs = findLargestImgSubset(cleanFg,mask);
 joinedSilhs = findLargestImgSubset(cleanSilh,mask);
 
 % Lastly, we need to break the obtained sequence of images in two senses,
 % given a starting image. This is selected manually and the two
 % subsequences are easily found exploiting the fact that the sequence is
-% ordered with respect to the rotation of the target. 
-refImg = joinedImgs{1};
-[imgsL,imgsR,silhsL,silhsR] = breakSequence(refImg,joinedImgs,joinedSilhs,0);
+% ordered with respect to the rotation of the target.
+refImg = joinedImgs{16};
+[imgsL,imgsR,silhsL,silhsR] = breakSequence(refImg,joinedImgs,joinedSilhs,1);
 
 %% Camera calibration
 % Using images of a checkboard with known square size, we calibrate the
 % camera and find the intrinsic parameters.
-cameraParams = calibrationDemo2();
+imgRoot = strcat('./','Dataset/Demo3/calib/','/');
+imnames=dir([imgRoot '*' 'jpg']);
+    
+for i=1:length(imnames)
+    imname=[imgRoot imnames(i).name]; 
+    img = imread(imname);
+    if size(img,1) < size(img,2)
+        imwrite(flip(permute(img,[2 1 3]),2),imname);
+    end
+end
+cameraParams = calibrationDemo3();
 
 %% Pose estimation from simple matching
-vSetMatchingL = findPoseMatching(imgsL,cameraParams,0.4);
-vSetMatchingR = findPoseMatching(imgsR,cameraParams,0.4);
+vSetMatchingL = findPoseMatching(imgsL,cameraParams,0.50);
+vSetMatchingR = findPoseMatching(imgsR,cameraParams,0.50);
 
 %% Pose estimation from interrupted KLT
-vSetKltL = findPosesKLT(imgsL,cameraParams,0.4);
-vSetKltR = findPosesKLT(imgsR,cameraParams,0.4);
+vSetKltL = findPosesKLT(imgsL,cameraParams,0.50);
+vSetKltR = findPosesKLT(imgsR,cameraParams,0.50);
 
 
 %% ----------------------------------------------------------------------%%
@@ -169,26 +187,25 @@ vSetKltR = findPosesKLT(imgsR,cameraParams,0.4);
 %% Voxel carving
 % Initialization of the voxels, giving an imprecise guess over the target
 % position. 
-[xlim,ylim,zlim] = findModelBoundaries(vSetKltL,vSetKltR,silhsL,silhsR,15,15,cameraParams);
-
+[xlim,ylim,zlim] = findModelBoundaries(vSetKltL,vSetKltR,silhsL,silhsR,0,4,cameraParams);
+%%
 % Distribute the rough limits in more voxels, to obtain a more precise
 % model. A dense reconstruction can be achieved with a discretisation of
 % 20M voxels. 
 delta = nthroot((xlim(2)-xlim(1))*(ylim(2)-ylim(1))*(zlim(2)-zlim(1))/20000000,3);
 voxelSize = [delta delta delta];
 [voxels,~,~,~,~] = initializeVoxels(xlim,ylim,zlim,voxelSize);
-
+%%
 % Carve the model from the discretization of the bounded volume.
-voxels = carvingFromPoses(voxels,vSetKltL,vSetKltR,...
-    silhsL,silhsR,0,28,cameraParams);
+voxels = carvingFromPoses(voxels,vSetMatchingL,vSetMatchingR,silhsL,silhsR,6,0,cameraParams);
 
 %% Reconstruction visualisation
 % Visualize the target with the MATLAB built in 3D plotting function.
-figure, pcshow(voxels(voxels(:,4)>=vSetMatchingL.NumViews+vSetMatchingR.NumViews-3,1:3));
+figure, pcshow(voxels(voxels(:,4)>=vSetMatchingL.NumViews+vSetMatchingR.NumViews,1:3));
 view([0,-80])
 colormap summer
 
 % Visualize the target using the computed voxels and not a dense cloud of
 % points.
 figure, voxelPatch = create3DReconstruction(voxels(voxels(:,4)>=...
-    vSetMatchingL.NumViews+vSetMatchingR.NumViews-3,:),delta);
+    vSetMatchingL.NumViews+vSetMatchingR.NumViews,:),delta);

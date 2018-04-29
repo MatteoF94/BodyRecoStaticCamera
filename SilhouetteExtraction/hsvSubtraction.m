@@ -1,4 +1,14 @@
 function silhouettes = hsvSubtraction(bkgs,imgs,varargin)
+%
+%  Input(s):
+%           bkgs - images of the background, used to average over time
+%           imgs - images in which we want to extract a target silhouette
+%           varargin - optional argument describing the window size when
+%                      using median filter to denoise the foreground
+%  Output(s):
+%           silhouettes - the extracted silhouettes from the input images
+%
+
     % Input arguments error checks and parsing
     if length(bkgs) < 1
         error('myfuns:hsvSubtraction:TooFewInputs', ...
@@ -25,8 +35,8 @@ function silhouettes = hsvSubtraction(bkgs,imgs,varargin)
     % Each image is compared in the HSV color space with the background,
     % using a bitwise xor comparison (positive output if two pixels
     % differ). Application of median filtering and region denoising
-    % provides a better outcome, coping with the not considered variance in
-    % the background
+    % provides a better outcome, dealing with the not considered variance
+    % in the background
     numImgs = length(imgs);
     silhouettes = cell(numImgs,1);
     
@@ -35,13 +45,14 @@ function silhouettes = hsvSubtraction(bkgs,imgs,varargin)
         out = rgb2gray(bitxor(bkgHSV,imgHSV));
         binImg = out>0;
         
+        % Smoothing of the foreground using a median filter
         filtImg = medfilt2(binImg,[filtWinSize,filtWinSize]);
         
         % Denoising done clustering similar regions in the binary image
         [L, num] = bwlabel(filtImg);
         STATS = regionprops(L,'all');
         for j = 1:num
-            dd=STATS(i).Area;
+            dd=STATS(j).Area;
             if(dd<500)
                 L(L==j)=0;
                 num=num-1;

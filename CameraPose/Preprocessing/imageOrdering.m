@@ -1,6 +1,18 @@
 function [ordImgs,ordSilhs] = imageOrdering(imagePath,silhPath)
-%IMAGEORDERING Summary of this function goes here
-%   Detailed explanation goes here
+%
+%  Input(s): 
+%           imagePath - path ponting at the directory containing the
+%                       foreground images
+%           silhPath - path ponting at the directory containing the
+%                       silhouettes 
+%  Output(s): 
+%           ordImgs - the ordered foregrounds w.r.t. the rotation of the
+%                     target
+%           ordSilhs - the ordered silhouettes corresponding to the
+%                      foregrounds
+%
+
+    % Initialize the image datastores for the foregrounds and silhouettes
     imds = imageDatastore(imagePath);
     silhds = imageDatastore(silhPath);
     numImgs = length(imds.Files);
@@ -20,15 +32,17 @@ function [ordImgs,ordSilhs] = imageOrdering(imagePath,silhPath)
     for i = 2:numImgs-1
         imageIndex = indexImages(imds,'Verbose',0,'SaveFeatureLocation',0);
 
-        % Begin the search iteration 
+        % Search for the image more similar to the previous one
         imageIDs = retrieveImages(startImg,imageIndex);
    
         currIdx = imageIDs(1);
         imageLocation = imageIndex.ImageLocation{currIdx};
         startImg = imread(imageLocation);
         ordImgs{i} = startImg;
-        imds.Files(currIdx) = [];
+        imds.Files(currIdx) = []; % delete it from the datastore
         
+        % Find the corresponding silhouette and remove it from its
+        % datastore, using a regular expression to retrieve it by name
         cardImg = str2double(regexp(imageLocation,'(?<=_)\d+(?=.)','match'));
         fullCardImg = sprintf('%.4d',cardImg);
         locations = silhds.Files;
@@ -37,13 +51,8 @@ function [ordImgs,ordSilhs] = imageOrdering(imagePath,silhPath)
         silhds.Files(silhIdx) = [];
     end    
     
+    % After the iteration, only one image remains in both datasets: the
+    % last one
     ordImgs{numImgs} = readimage(imds,1);
     ordSilhs{numImgs} = readimage(silhds,1);
 end
-
-%
-% TODO: when selecting currIdx at 21, check wether the sense is correct,
-% selecting common features and making the average (left or right from the
-% old one?)
-%
-

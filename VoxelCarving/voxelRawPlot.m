@@ -1,4 +1,4 @@
-function [vert, fac] = voxel_image( pts, vox_sz, color, alpha, edgec )
+function [vert, fac] = voxelRawPlot( pts, vox_sz, color, alpha, edgec )
 %VOXEL_IMAGE Creates a 3D voxel image
 %   Parameters:
 %   pts    - n x 3 matrix with 3D points

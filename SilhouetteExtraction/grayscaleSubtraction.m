@@ -18,7 +18,7 @@ function silhouettes = grayscaleSubtraction(bkgs,imgs,varargin)
             'Function requires at least one background image.');
     end
     
-    [rThresh, gThresh, bThresh] = parseInput(varargin);
+    [rThresh, gThresh, bThresh] = parseInput(varargin{:});
 
     % To model the background we need to extract separaterly the three
     % color channel for all the available background images and compute the
@@ -50,21 +50,21 @@ function silhouettes = grayscaleSubtraction(bkgs,imgs,varargin)
         gMask = abs(currImg(:,:,2) - gBkg) > gThresh;
         bMask = abs(currImg(:,:,3) - bBkg) > bThresh;
         
-        silhouettes{i} = rMask+gMask+bMask;
+        silhouettes{i} = rMask+gMask+bMask >= 1;
     end
 end
 
 % ----------------------------------------------------------------------- %
 
 function [r,g,b] = parseInput(varargin)
-    %
-    %  Input(s):
-    %           varargin - the optional arguments of the calling function
-    %  Output(s):
-    %           r - red channel threshold (default or selected)
-    %           g - green channel threshold (default or selected)
-    %           b - blue channel threshold (default or selected)
-    %
+%
+%  Input(s):
+%           varargin - the optional arguments of the calling function
+%  Output(s):
+%           r - red channel threshold (default or selected)
+%           g - green channel threshold (default or selected)
+%           b - blue channel threshold (default or selected)
+%
     
     numvarargs = length(varargin);
     if numvarargs > 3
@@ -74,7 +74,7 @@ function [r,g,b] = parseInput(varargin)
 
     optargs = {4 4 4}; % set the default thresholds
     for i = 1:numvarargs
-        currArg = [varargin{i}{1}];
+        currArg = [varargin{i}];
         switch currArg.ch
             case 'r'
                 index = 1;

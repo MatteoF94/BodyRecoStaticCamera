@@ -33,16 +33,16 @@ function [rT,gT,bT] = geneticGraySelection(bkgs,img,refSilh,numChrom,iters)
     for i = 1:iters
         
         % Evaluation of the fitness function, calculated as the absolute
-        % difference between the reference silhouette and the extracted
-        % one, counting the misclassified pixels
+        % difference between the reference silhouette and the negative of the
+        % extracted one, counting the corrected classified pixels
         for j = 1:numChrom
             currChrom = chromosomes{j};
             currSilh = grayscaleSubtraction(bkgs,{img},...
                          struct('ch','r','value',currChrom(1)),...
                          struct('ch','g','value',currChrom(2)),...
                          struct('ch','b','value',currChrom(3)));
-            diff = imabsdiff(refSilh,boolean(currSilh{1}));
-            fitness(j) = sum(diff(:));
+            equal = imabsdiff(refSilh,boolean(1-currSilh{1}));
+            fitness(j) = sum(equal(:));
         end
         
         totFitness = sum(fitness);
@@ -106,8 +106,8 @@ function [rT,gT,bT] = geneticGraySelection(bkgs,img,refSilh,numChrom,iters)
                         struct('ch','r','value',currChrom(1)),...
                         struct('ch','g','value',currChrom(2)),...
                         struct('ch','b','value',currChrom(3)));
-           diff = imabsdiff(refSilh,boolean(currSilh{1}));
-           fitness(j) = sum(diff(:));
+           equal = imabsdiff(refSilh,boolean(1-currSilh{1}));
+           fitness(j) = sum(equal(:));
     end
     
     idx = find(fitness>=max(fitness),1);

@@ -1,4 +1,17 @@
 function silhouettes = gaussianMixtureModelSubtraction(bkgs,imgs,varargin)
+%
+%  Input(s): 
+%           bkgs - the sequence of images representing the scene without
+%                  target
+%           imgs - the sequence of images representing the scene with the
+%                  target
+%           varargin - contains the parameters describing number of
+%                      gaussian used, minimum background ratio, initial 
+%                      variance and learning rate of the detector used
+%  Output(s): 
+%           silhouettes - the detected silhouettes
+%
+    
     % Input arguments error checks and parsing
     if length(bkgs) < 1
         error('myfuns:grayscaleSubtraction:TooFewInputs', ...
@@ -27,6 +40,21 @@ function silhouettes = gaussianMixtureModelSubtraction(bkgs,imgs,varargin)
 end
 
 function [eta,numGaussians,minBkgRatio,initVariance] = parseInput(varargin)
+%
+%  Input(s): 
+%           varargin - contains the parameters describing number of
+%                      gaussian used, minimum background ratio, initial 
+%                      variance and learning rate of the detector used
+%  Output(s): 
+%           eta - the selected learning rate (default or user defined)
+%           numGaussians - the number of gaussians used to model the pixels
+%                          (default or user defined)
+%           minBkgRatio - the minimum background ratio (default or user
+%                         defined)
+%           initVariance - the initial variance of the model (default or 
+%                          user defined)
+%
+
     numvarargs = length(varargin);
     if numvarargs > 4
         error('myfuns:gaussianMixtureModel:TooManyInputs', ...

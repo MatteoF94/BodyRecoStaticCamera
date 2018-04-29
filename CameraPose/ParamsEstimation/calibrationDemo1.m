@@ -1,4 +1,10 @@
 function cameraParams = calibrationDemo1()
+%
+%  Input(s): 
+%  Output(s): 
+%           cameraParams - parameters of the camera for demo 1 obtained
+%                          through calibration
+%
 
     % Define images to process
     imageFileNames = {strcat(pwd,'/Dataset/Demo1/calib/IMG_0001.jpg'),...

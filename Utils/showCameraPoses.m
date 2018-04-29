@@ -5,7 +5,7 @@ function showCameraPoses(vSet)
         Orientation = Pose.Orientation{1};
         Location = Pose.Location{1};
         [R,t] = cameraPoseToExtrinsics(Orientation,Location);
-        plotCamera('Orientation',R,'Location',t,'Size',0.1);
+        plotCamera('Orientation',R,'Location',t,'Size',0.01);
         hold on;
     end
 end

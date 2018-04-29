@@ -1,13 +1,15 @@
 function [cleanImgs,cleanSilhs] = wipeDuplicates(imgs,silhs,varargin)
 %
 %  Input(s):
-%           imgs - set of images to clean from duplicates
-%           threshold - optional argument that allows the user to select
-%                       the sensitivity of comparison between images, to 
-%                       determine if they represent the same scene, default
-%                       value is 1.
+%           imgs - set of foregrounds to clean from duplicates
+%           silhs - set of silhouettes to clean from duplicates
+%           varargin(threshold) - optional argument that allows the user to select
+%                                 the sensitivity of comparison between images, to 
+%                                 determine if they represent the same scene, default
+%                                 value is 1.
 %  Output(s):
 %           cleanImgs - the input set of images polished of duplicates
+%           cleanSilhs - the input set of silhouettes polished of duplicates 
 %
   
     % Select the threshold value for the comparison sensitivity.
@@ -30,6 +32,9 @@ function [cleanImgs,cleanSilhs] = wipeDuplicates(imgs,silhs,varargin)
         else
             idx = i+1;
         end
+        
+        % Two images are the same if the average of the feature distances
+        % is too low or if their colorimatric distance is almost null
         isSame = checkSameImage(imgs{i},imgs{idx},threshold);
         distRGB = crossBinPairEMD(imgs{i},imgs{idx});
         isEMD = abs(distRGB(1))<20 && abs(distRGB(2))<20 && abs(distRGB(3))<20;

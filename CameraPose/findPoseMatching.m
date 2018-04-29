@@ -1,68 +1,98 @@
-function vSet = findPose1(mainImg,imgs,cameraParams)
+function vSet = findPoseMatching(imgs,cameraParams,knownDistance)
+%
+%  Input(s): 
+%           imgs - sequence of images for which we want to find the
+%                  correspondant camera poses
+%           cameraParams - the parameters describing the cameras obtained
+%                          through previous calibration
+%           knownDistance - number describing a known distance in the scene
+%  Output(s): 
+%           vSet - structured set containing camera poses, their
+%                  correspondant images and the connections between images/poses
+%
 
-    vSet = poseEstimation(mainImg,imgs,cameraParams);
- 
-end
-
-function vSet = poseEstimation(firstImg,sideImgs,cameraParams)
+    % Initialize the view set, defining also fixed values
     MATCH_THRESH = 10;
-    MAX_RATIO = 0.6;
+    MAX_RATIO = 0.7;
     
     vSet = viewSet;
 
-    firstImg = undistortImage(rgb2gray(firstImg),cameraParams);
-    startPoints = detectSURFFeatures(firstImg,'MetricThreshold',1000,'NumOctaves',6,'NumScaleLevels',12);
+    % Extract features from the first image
+    viewId = 1;
+    firstImg = undistortImage(rgb2gray(imgs{viewId}),cameraParams);
+    startPoints = detectSURFFeatures(firstImg,'MetricThreshold',2000,'NumOctaves',12,'NumScaleLevels',12);
     [firstFeatures,validFirstPts] = extractFeatures(firstImg,startPoints);
-    vSet = addView(vSet, 1, 'Points', startPoints, 'Orientation', eye(3)*rotx(10),...
-        'Location',[0 0 0]);
+    vSet = addView(vSet,viewId,'Points',startPoints,'Orientation',eye(3),'Location',[0 0 0]);
     
+    % Extract features from the second image
     viewId = 2;
-    currImg = undistortImage(rgb2gray(sideImgs{1}),cameraParams);
-    currPoints = detectSURFFeatures(currImg,'MetricThreshold',1000,'NumOctaves',6,'NumScaleLevels',12);
+    currImg = undistortImage(rgb2gray(imgs{viewId}),cameraParams);
+    currPoints = detectSURFFeatures(currImg,'MetricThreshold',2000,'NumOctaves',12,'NumScaleLevels',12);
     [currFeatures,validCurrPts] = extractFeatures(currImg,currPoints);
     
+    % Find matching features between the two images
     indexPairs = matchFeatures(firstFeatures,currFeatures,'MatchThreshold',MATCH_THRESH,...
         'MaxRatio',MAX_RATIO,'Unique',true);
     
     matchingStartPts = validFirstPts(indexPairs(:,1),:);
     matchingCurrPts = validCurrPts(indexPairs(:,2),:);
-
- 
     
+    % Estimate the essential matrix from the previously found matching features
     [E, inlierIdx] = estimateEssentialMatrix(matchingStartPts,matchingCurrPts,cameraParams,...
         'Confidence',99.99,'MaxDistance',5,'MaxNumTrials',500);
     inlierPointsFirst = matchingStartPts(inlierIdx); 
     inlierPointsCurr = matchingCurrPts(inlierIdx); 
     
+    % Find the second camera pose, fixing the first
     [orient,loc,~] = relativeCameraPose(E,cameraParams,inlierPointsFirst,inlierPointsCurr);
     [R12,t12] = cameraPoseToExtrinsics(orient,loc);
     camMatrix2 = cameraMatrix(cameraParams, R12, t12); 
     camMatrix1 = cameraMatrix(cameraParams,eye(3),[0 0 0]); 
     
+    % Adjust the camera poses computing the scale factor between images and
+    % scene
     scaleFactor = computeScaleFactor(firstImg,currImg,...
                                      inlierPointsFirst,inlierPointsCurr,...
-                                     camMatrix1,camMatrix2);
+                                     camMatrix1,camMatrix2,knownDistance);
     loc = loc*scaleFactor;
     
     vSet = addView(vSet, viewId, 'Points', currPoints, 'Orientation', orient, 'Location', loc); 
     vSet = addConnection(vSet, viewId-1, viewId, 'Matches', indexPairs);
     
-    vSet = estimationCompletion(sideImgs,cameraParams,vSet,currFeatures,validCurrPts); 
+    % Estimate the other camera poses
+    vSet = estimationCompletion(imgs,cameraParams,vSet,currFeatures,validCurrPts); 
 end
 
 function vSet = estimationCompletion(imgs,cameraParams,vSet,currFeatures,validCurrFeat)
+%
+%  Input(s): 
+%           imgs - sequence of images for which we want to find the
+%                  correspondant camera poses
+%           cameraParams - the parameters describing the cameras obtained
+%                          through previous calibration
+%           vSet - the structured set containing the poses found so far
+%           currFeatures - features obtained from the second image
+%           validCurrFeat - valid points, related to the features of the
+%                           second image
+%  Output(s): 
+%           vSet - complete structured set containing all the camera poses
+%
+
     numImgs = length(imgs);
     prevFeatures = currFeatures;
     validPrevFeat = validCurrFeat;
     
-    for viewId = 3:numImgs+1 % slided forward of 1 image
-        currImg = undistortImage(rgb2gray(imgs{viewId-1}),cameraParams);
-        currPoints = detectSURFFeatures(currImg,'MetricThreshold',500,'NumOctaves',6,'NumScaleLevels',12);
+    for viewId = 3:numImgs
+        
+        % Extract features from the viewId-th images
+        currImg = undistortImage(rgb2gray(imgs{viewId}),cameraParams);
+        currPoints = detectSURFFeatures(currImg,'MetricThreshold',500,'NumOctaves',18,'NumScaleLevels',18);
         [currFeatures,validCurrFeat] = extractFeatures(currImg,currPoints);
-        indexPairs = matchFeatures(prevFeatures,currFeatures,'MatchThreshold',20,...
+        indexPairs = matchFeatures(prevFeatures,currFeatures,'MatchThreshold',10,...
         'MaxRatio',0.7,'Unique',true);
     
-        prevImg = undistortImage(rgb2gray(imgs{viewId-2}),cameraParams);
+        % Find matching features between the current and previous image
+        prevImg = undistortImage(rgb2gray(imgs{viewId}),cameraParams);
         matchingPtsPrev = validPrevFeat(indexPairs(:,1),:);
         matchingPtsCurr = validCurrFeat(indexPairs(:,2),:);
         showMatchedFeatures(prevImg,currImg,matchingPtsPrev,matchingPtsCurr);
@@ -70,14 +100,17 @@ function vSet = estimationCompletion(imgs,cameraParams,vSet,currFeatures,validCu
         [worldPointsSURF, imagePointsSURF] = helperFind3Dto2DCorrespondences(vSet,cameraParams,...
             indexPairs,currPoints);
 
+        % Estimate the current camera pose
         [orient, loc] = estimateWorldCameraPose(imagePointsSURF, worldPointsSURF,...
-            cameraParams,'MaxNumTrials',50000,'Confidence',99,...
+            cameraParams,'MaxNumTrials',50000,'Confidence',99.99,...
             'MaxReprojectionError',0.7);
 
         vSet = addView(vSet,viewId,'Points',currPoints,'Orientation',orient,...
             'Location',loc);
         vSet = addConnection(vSet,viewId-1,viewId,'Matches',indexPairs);
 
+        % At every even image, perform bundle adjustment on a small window
+        % of images (to avoid high computational costs)
         if mod(viewId,2)==0
             windowSize = 4;
             startFrame = max(1,viewId - windowSize);
@@ -96,6 +129,7 @@ function vSet = estimationCompletion(imgs,cameraParams,vSet,currFeatures,validCu
             vSet = updateView(vSet, camPoses);
         end
         
+        % Save features and valid points for the next iteration
         prevFeatures = currFeatures;
         validPrevFeat = validCurrFeat;
     end
