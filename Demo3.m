@@ -188,14 +188,14 @@ vSetKltR = findPosesKLT(imgsR,cameraParams,0.50);
 % Initialization of the voxels, giving an imprecise guess over the target
 % position. 
 [xlim,ylim,zlim] = findModelBoundaries(vSetKltL,vSetKltR,silhsL,silhsR,0,4,cameraParams);
-%%
+
 % Distribute the rough limits in more voxels, to obtain a more precise
 % model. A dense reconstruction can be achieved with a discretisation of
 % 20M voxels. 
 delta = nthroot((xlim(2)-xlim(1))*(ylim(2)-ylim(1))*(zlim(2)-zlim(1))/20000000,3);
 voxelSize = [delta delta delta];
 [voxels,~,~,~,~] = initializeVoxels(xlim,ylim,zlim,voxelSize);
-%%
+
 % Carve the model from the discretization of the bounded volume.
 voxels = carvingFromPoses(voxels,vSetMatchingL,vSetMatchingR,silhsL,silhsR,6,0,cameraParams);
 

@@ -1,30 +1,49 @@
-function voxels_out = voxelCarving(I, m, R, M_calibr_interna, voxels_in,n,p) 
-    voxels_da_proiettare = voxels_in(:,1:3); % Tengo solo le prime tre componenti 
-    % Proiezione 
-    voxel_camera = m + voxels_da_proiettare*R; 
-    L = voxel_camera*M_calibr_interna; 
+function voxelsOut = voxelCarving(I,t,R,K,voxelsIn,n,p) 
+%
+%  Input(s):
+%           I - silhouette image
+%           t - location of the camera
+%           R - rotation matrix of the camera
+%           K - intrinsic parameters of the camera
+%           voxelsIn - starting voxels, before carving
+%           n - maximum fuzzy value of the voxels
+%           p - number for which if a voxel has fuzzy value < (n - p) it is
+%               discarded
+%  Output(s):
+%           voxelsOut - voxels after carving
+%
+
+    % We consider only the 3D coordinates of the voxels
+    voxelsProj = voxelsIn(:,1:3);
+    
+    % Then we project them into camera coordinates and image coordinates 
+    voxelsCamera = t + voxelsProj*R; 
+    L = voxelsCamera*K; 
     L = L'; 
     Lnorm=round(L(1:2,:)./L(3,:));  
-    % PROCEDURA DI VOTAZIONE: 
-    % Se un voxel viene proiettato fuori dai limiti dell'immagine o 
-    % in un punto esterno alla silhouette, il suo punteggio viene decrementato 
-    % Vengono restituiti dalla funzione solo quei voxel che sono proiettati 
-    % all'interno della silhouette o che pur avendo perso un punto hanno 
-    % ancora punteggio superiore alla soglia 
+    
+    % If a voxel has its image outside the silhouette or outside the
+    % boundaries of the frame, its fuzzy value is decremented by one. If
+    % such value is less than a fixed threshold, we discard the voxel,
+    % otherise it is kept (allowing soft constraints).
+    % Otherwise if a voxel has its image inside the silhouette, it is
+    % immedialy kept, without any change in the fuzzy value.
     j=1;
-    voxels_out=voxels_in;
+    voxelsOut = voxelsIn;
     for i = 1:size(Lnorm,2)
         if ~((Lnorm(2,i)>0 && Lnorm(2,i)<(size(I,1)+1) && Lnorm(1,i)>0 &&...            
                 Lnorm(1,i)<(size(I,2)+1))&& I(Lnorm(2,i),Lnorm(1,i))>=1 )
-            voxels_in(i,4)=voxels_in(i,4)-1;
-            if  voxels_in(i,4)>= (n-p)
-                voxels_out(j,1:4)=voxels_in(i,1:4);
+            
+            voxelsIn(i,4)=voxelsIn(i,4)-1;
+            if  voxelsIn(i,4)>= (n-p)
+                voxelsOut(j,1:4)=voxelsIn(i,1:4);
                 j=j+1;         
             end
         else
-            voxels_out(j,1:4)=voxels_in(i,1:4);
+            voxelsOut(j,1:4)=voxelsIn(i,1:4);
             j=j+1;     
         end
     end
-    voxels_out=voxels_out(1:j-1,1:4);
+    
+    voxelsOut=voxelsOut(1:j-1,1:4);
 end

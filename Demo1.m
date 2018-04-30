@@ -156,7 +156,7 @@ vSetKltR = findPosesKLT(imgsR,cameraParams,0.4);
 % Initialization of the voxels, giving an imprecise guess over the target
 % position. 
 [xlim,ylim,zlim] = findModelBoundaries(vSetMatchingL,vSetMatchingR,silhsL,silhsR,0,0,cameraParams);
-%%
+
 % Distribute the rough limits in more voxels, to obtain a more precise
 % model. A dense reconstruction can be achieved with a discretisation of
 % 20M voxels. 

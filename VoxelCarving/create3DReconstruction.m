@@ -1,4 +1,14 @@
 function myPatch = create3DReconstruction(voxels,delta)
+%
+%  Input(s):
+%           voxels - set of voxels describing the volume occupied by the
+%                    target 
+%           delta - side length of a voxel
+%  Output(s):
+%           myPatch - 3D patch object representing the volume
+%
+
+    % Discretize again the volume around the target, without repetitions
     ux = unique(voxels(:,1));
     uy = unique(voxels(:,2));
     uz = unique(voxels(:,3));
@@ -7,6 +17,7 @@ function myPatch = create3DReconstruction(voxels,delta)
     uy = [uy(1)-delta; uy; uy(end)+delta];
     uz = [uz(1)-delta; uz; uz(end)+delta];
     
+    % Create a grid with the discretized values
     [X,Y,Z] = meshgrid( ux, uy, uz );
     V = zeros( size( X ) );
     N = numel( voxels(:,1) );

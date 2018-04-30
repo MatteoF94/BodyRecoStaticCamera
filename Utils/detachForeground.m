@@ -1,6 +1,12 @@
 function maskedImgs = detachForeground(imgs,silhouettes)
-%EXTRACTFOREGROUND Summary of this function goes here
-%   Detailed explanation goes here
+%
+%  Input(s):
+%           imgs - sequence of images representing the moving target
+%           silhouettes - the extracted silhouettes from the input images
+%  Output(s):
+%           maskedImgs - extracted foregrounds from the images
+%
+
     % Input arguments error checks 
     if length(imgs) ~= length(silhouettes)
         error('myfuns:extractForeground:DifferentInputs', ...

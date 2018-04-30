@@ -1,6 +1,12 @@
 function joinedImgs = findLargestImgSubset(imgs,mask)
-%FINDLARGESTIMGSUBSET Summary of this function goes here
-%   Detailed explanation goes here
+%
+%  Input(s):
+%           imgs - sequence of images representing the moving target
+%           mask - binary array representing the validity of each image of
+%                  the sequence
+%  Output(s):
+%           joinedImgs - largest subest of valid images in the sequence
+%
     
     % First we find all the subset of the mask, corresponding do valid
     % images. We are doing it in a circular way, so we start not from the
@@ -9,6 +15,7 @@ function joinedImgs = findLargestImgSubset(imgs,mask)
     maskLength = length(mask);   
     numSubs = 0;
   
+    % Handle the special cases, where we have no invalid images
     zerosPos = find(mask == 0);
     if ~isempty(zerosPos)
         firstZ = min(zerosPos);
@@ -24,6 +31,7 @@ function joinedImgs = findLargestImgSubset(imgs,mask)
         end
     end 
     
+    % Another special case: only one image is invalid
     if lastZ == firstZ
         joinedImgs = selectImages(imgs,[firstZ+1, maskLength-1]);
         return
@@ -45,6 +53,9 @@ function joinedImgs = findLargestImgSubset(imgs,mask)
     end
     
     idx = idx + 1;
+    
+    % Start another subset when changing the validity of the images in the
+    % sequence
     subsets(idx,:) = [mod((lastZ+1),maskLength),maskLength-lastZ+firstZ-1];
     
     maxSubsetsInd = subsets(:,2) >= max(subsets(:,2));
@@ -54,6 +65,14 @@ function joinedImgs = findLargestImgSubset(imgs,mask)
 end
 
 function selectedImgs = selectImages(imgs,bestSubset)
+%
+%  Input(s):
+%           imgs - sequence of images representing the moving target
+%           bestSubset - represents the extreme indeces of the largest
+%                        subset of acceptable images
+%  Output(s):
+%           selectedImgs - extracted best subset from the sequence
+%
     numImgs = length(imgs);
     numSelectedImgs = bestSubset(2);
     selectedImgs = cell(numSelectedImgs,1);
